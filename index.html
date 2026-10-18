@@ -133,7 +133,19 @@ h1,h2,h3{font-family:"Bricolage Grotesque","Plus Jakarta Sans",system-ui,sans-se
 .note::before{content:"";position:absolute;inset:3px;border:1px dashed rgba(255,255,255,.45);border-radius:2px}
 .note small{font-size:8px;font-weight:600}
 .note b{position:absolute;top:-7px;right:-6px;background:var(--fg);color:var(--panel);font-size:10px;border-radius:99px;padding:0 5px}
-.log{list-style:none;margin:0;padding:0;font-size:.85em;background:var(--panel);border-radius:14px;max-height:340px;overflow:auto}
+.log{list-style:none;margin:0;padding:0;font-size:.85em;background:var(--panel);border-radius:14px;max-height:340px;overflow:auto;min-height:120px}
+.log:empty::before{content:"Belum ada kabar. Kejadian permainan akan muncul di sini.";display:block;padding:12px;color:var(--muted)}
+.log li.fresh{animation:freshin 1.6s ease-out}
+@keyframes freshin{0%{background:color-mix(in srgb,var(--emas) 40%,var(--panel))}100%{background:transparent}}
+.lastnews{width:100%;max-width:62cqw;background:rgba(0,0,0,.3);border-radius:.8cqw;padding:.6cqw 1.2cqw;font-size:clamp(10px,1.55cqw,14px);text-align:center;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:1.4em}
+.lastnews:empty{display:none}
+.lastnews b{color:#fff!important;text-shadow:0 0 6px rgba(0,0,0,.4)}
+@media (min-width:921px){
+  .side{overflow:hidden}
+  .side>*{flex:none}
+  #players{flex:0 1 auto;overflow:auto;min-height:140px}
+  .side>.log{flex:1 1 240px;min-height:200px;max-height:none}
+}
 .log li{padding:7px 12px;border-bottom:1px solid var(--line)}
 .log li:last-child{border:0}
 .log li.sep{background:color-mix(in srgb,var(--fg) 5%,var(--panel));font-weight:700;color:var(--muted)}
@@ -301,6 +313,7 @@ h1,h2,h3{font-family:"Bricolage Grotesque","Plus Jakarta Sans",system-ui,sans-se
           <div class="deck musibah" id="deckM"><div>⚠️</div>Kartu<br>Musibah</div>
         </div>
         <div class="cbot">
+          <div class="lastnews" id="lastNews" aria-live="polite"></div>
           <div class="status" id="status"></div>
           <div class="controls" id="controls"></div>
           <div class="meta"><span>🗓️ Putaran <b id="roundVal">1</b></span><span>🎁 Dana hibah <b id="potVal">Rp 0 rb</b></span><span>📜 <b id="ruleName"></b></span></div>
@@ -674,7 +687,7 @@ function render(){
 function renderIdle(){
   tileEls.forEach(te=>{ te.el.style.boxShadow=''; if(te.lv) te.lv.textContent=''; te.tok.innerHTML=''; });
   $('#players').innerHTML='<div class="idle">Belum ada permainan. Atur pemain dan pilih koleksi aturan di layar mulai.</div>';
-  $('#log').innerHTML=''; $('#status').innerHTML=''; $('#controls').innerHTML='<button class="primary" id="cStart">Mulai permainan</button>';
+  $('#log').innerHTML=''; $('#lastNews').innerHTML=''; $('#status').innerHTML=''; $('#controls').innerHTML='<button class="primary" id="cStart">Mulai permainan</button>';
   $('#cStart').onclick=showSetup; $('#potVal').textContent=fmt(R.bansosStart); $('#roundVal').textContent='–';
 }
 function renderTiles(){
@@ -725,8 +738,14 @@ function renderControls(){
   const on=(id,fn)=>{const e=$(id); if(e) e.onclick=fn};
   on('#cRoll',onRoll); on('#cEnd',endTurn); on('#cPay',()=>payJail(cur())); on('#cOrdal',()=>useOrdal(cur())); on('#cManage',()=>openManage(cur()));
 }
-function renderLog(){ $('#log').innerHTML=S.log.map(l=>`<li class="${l.sep?'sep':''}">${l.h}</li>`).join(''); }
-function log(h,sep){ S.log.unshift({h,sep}); if(S.log.length>90) S.log.pop(); }
+function renderLog(){
+  const el=$('#log'); if(!el) return;
+  const fresh=Math.max(0,(S.logN||0)-(S.logShown||0)); S.logShown=S.logN||0;
+  el.innerHTML=S.log.map((l,i)=>`<li class="${l.sep?'sep':''}${i<fresh?' fresh':''}">${l.h}</li>`).join('');
+  if(fresh) el.scrollTop=0;
+  const ln=$('#lastNews'); if(ln){ const last=S.log.find(l=>!l.sep); ln.innerHTML=last?'📰 '+last.h:''; }
+}
+function log(h,sep){ S.log.unshift({h,sep}); S.logN=(S.logN||0)+1; if(S.log.length>90) S.log.pop(); if(S.log.length&&$('#log')) renderLog(); }
 function toast(h,kind=''){ const box=$('#toasts'); const el=document.createElement('div'); el.className='toast '+kind; el.innerHTML=h; box.appendChild(el); while(box.children.length>3) box.firstChild.remove(); setTimeout(()=>el.classList.add('out'),2600); setTimeout(()=>el.remove(),3000); }
 function floatMoney(p,delta){
   if(!delta) return; const card=document.getElementById('pc-'+p.id); if(!card) return;
